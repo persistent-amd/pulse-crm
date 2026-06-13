@@ -43,6 +43,48 @@ Customer Data
 → Campaign Delivery
 → Attribution & Analytics
 
+# AI Philosophy
+
+Pulse CRM is an AI-native Shopper Command Center.
+
+AI must be woven directly into marketer workflows and decision-making.
+
+The product should NOT feel like a traditional CRM with a chatbot attached.
+
+AI should help marketers:
+
+* Discover opportunities
+* Identify audiences
+* Generate campaigns
+* Recommend channels
+* Explain reasoning
+* Suggest next actions
+
+Primary AI capabilities:
+
+1. AI Audience Generation
+2. AI Campaign Generation
+3. AI Opportunity Discovery
+4. AI Marketing Brief Generation
+
+Optional:
+
+5. Conversational Command Center
+
+If implemented, the conversational interface must trigger real CRM actions and workflows rather than acting as a generic chatbot.
+
+The product philosophy is:
+
+Data → AI Insight → Audience → Campaign → Delivery → Analytics
+
+rather than:
+
+Data → CRUD Operations → Chatbot
+
+The assistant should trigger real product actions instead of acting as a generic chatbot.
+
+Avoid open-ended chat experiences.
+
 ---
 
 # Core User
