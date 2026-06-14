@@ -1,0 +1,1 @@
+"""Core channel-service configuration."""
