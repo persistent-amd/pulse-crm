@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.routes import audiences, imports, receipts
+from app.api.routes import audiences, debug, imports, receipts
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 
@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(imports.router)
     app.include_router(audiences.router)
     app.include_router(receipts.router)
+    app.include_router(debug.router)
 
     return app
 

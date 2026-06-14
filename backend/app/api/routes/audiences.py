@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,11 +26,22 @@ from app.services.audiences import (
 router = APIRouter(prefix="/audiences", tags=["audiences"])
 
 
+def parse_payload(model, payload: dict):
+    try:
+        return model.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=jsonable_encoder(exc.errors()),
+        ) from exc
+
+
 @router.post("/preview", response_model=AudiencePreviewResponse)
 def preview_audience(
-    request: AudiencePreviewRequest,
+    payload: dict,
     db: Session = Depends(get_db),
 ) -> AudiencePreviewResponse:
+    request = parse_payload(AudiencePreviewRequest, payload)
     return AudiencePreviewResponse(
         size=audience_size(db, request.filter_json),
         sample_customers=audience_samples(
@@ -41,9 +54,10 @@ def preview_audience(
 
 @router.post("", response_model=AudienceResponse, status_code=201)
 def save_audience(
-    request: AudienceCreateRequest,
+    payload: dict,
     db: Session = Depends(get_db),
 ) -> Audience:
+    request = parse_payload(AudienceCreateRequest, payload)
     return create_audience(db, request)
 
 

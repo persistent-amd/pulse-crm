@@ -224,7 +224,9 @@ def import_orders(db: Session, *, filename: str, content: bytes) -> ImportJob:
     customers_by_external_id = {
         customer.external_id: customer.id for customer in db.scalars(select(Customer)).all()
     }
-    existing_order_ids = set(db.scalars(select(Order.external_order_id)).all())
+    existing_order_ids = {
+        order.external_order_id for order in db.scalars(select(Order)).all()
+    }
     seen_order_ids: set[str] = set()
     affected_customer_ids: set[UUID] = set()
 
