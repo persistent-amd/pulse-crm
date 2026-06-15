@@ -1,0 +1,11 @@
+external_order_id,customer_external_id,order_date,amount,category,product,status
+ORD-DEMO-001,CUST-DEMO-001,2026-04-01,6999.00,Electronics,Smart Speaker,paid
+ORD-DEMO-002,CUST-DEMO-001,2026-04-14,3499.00,Fashion,Sneakers,paid
+ORD-DEMO-003,CUST-DEMO-001,2026-05-05,2499.00,Fashion,Weekend Dress,paid
+ORD-DEMO-004,CUST-DEMO-002,2026-03-10,1799.00,Coffee,French Press,paid
+ORD-DEMO-005,CUST-DEMO-002,2026-05-25,1299.00,Coffee,Mocha Gift Box,paid
+ORD-DEMO-006,CUST-DEMO-003,2026-06-08,1499.00,Beauty,Hydrating Cream,paid
+ORD-DEMO-007,CUST-DEMO-003,2026-06-10,1199.00,Beauty,Glow Serum,paid
+ORD-DEMO-008,CUST-DEMO-004,2026-05-18,1299.00,Fitness,Yoga Mat,paid
+ORD-DEMO-009,CUST-DEMO-004,2026-06-01,799.00,Fitness,Resistance Bands,paid
+ORD-DEMO-010,CUST-DEMO-005,2026-02-20,4999.00,Electronics,Wireless Earbuds,paid

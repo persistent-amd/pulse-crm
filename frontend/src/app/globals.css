@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b; /* Deep obsidian black */
+  --foreground: #f6f7eb; /* High-contrast cream text */
+  
+  --panel: #111114; /* Panel surface depth */
+  --card: #18181c; /* Elevate card surface */
+  --card-hover: #1e1e24; /* Elevated hover card */
+  
+  --primary: #e94f37; /* PRD Accent: orange-red/coral */
+  --primary-foreground: #f6f7eb;
+  
+  --secondary: #393e41; /* PRD Primary: slate gray */
+  --secondary-foreground: #f6f7eb;
+  
+  --muted: #1a1a1e;
+  --muted-foreground: #8a8d94;
+  
+  --accent: #e94f37;
+  --accent-foreground: #f6f7eb;
+  
+  --border: rgba(57, 62, 65, 0.25); /* Slate border */
+  --border-strong: rgba(57, 62, 65, 0.45);
+  --input: #1a1a1e;
+  --ring: rgba(233, 79, 55, 0.35); /* Coral glow */
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars for premium look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f1f23;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #393e41;
+}
+
+/* Layered depth panels */
+.depth-panel {
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.glass-panel {
+  background-color: rgba(13, 13, 16, 0.96); /* Highly opaque dark background to ensure readability */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.depth-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  transition: all 200ms ease;
+}
+
+.depth-card:hover {
+  background-color: var(--card-hover);
+  border-color: var(--border-strong);
+}
+
+.depth-highlight-card {
+  background-color: var(--card);
+  border: 1px solid rgba(233, 79, 55, 0.35);
+  box-shadow: 0 0 20px -5px rgba(233, 79, 55, 0.1);
+}
+
+/* Premium micro-shadow highlights */
+.glow-card-coral {
+  box-shadow: 0 0 35px -10px rgba(233, 79, 55, 0.15);
+}
+
+.glow-card-blue {
+  box-shadow: 0 0 35px -10px rgba(59, 130, 246, 0.08);
+}
+
+/* Typography Scales rules */
+.title-page {
+  font-size: 1.75rem; /* 28px */
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+.title-section {
+  font-size: 0.7rem; /* 11px */
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-geist-mono);
+  color: var(--muted-foreground);
+}
+
+.title-card {
+  font-size: 0.825rem; /* 13px */
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.text-meta {
+  font-size: 0.625rem; /* 10px */
+  font-family: var(--font-geist-mono);
+  color: var(--muted-foreground);
+}

@@ -1,0 +1,6 @@
+external_id,name,email,phone,city
+CUST-DEMO-001,Asha Mehta,asha.mehta@example.com,+919000000001,Mumbai
+CUST-DEMO-002,Rohan Shah,rohan.shah@example.com,+919000000002,Delhi
+CUST-DEMO-003,Meera Iyer,meera.iyer@example.com,+919000000003,Bengaluru
+CUST-DEMO-004,Vihaan Kapoor,vihaan.kapoor@example.com,+919000000004,Pune
+CUST-DEMO-005,Tara Khanna,tara.khanna@example.com,+919000000005,Chennai
