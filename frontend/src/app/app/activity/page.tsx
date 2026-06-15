@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   UploadCloud,
@@ -12,6 +12,7 @@ import {
   Filter,
   Inbox
 } from 'lucide-react';
+import { getDemoActivities, addDemoActivity, makeId, nowLabel, type DemoActivity } from '@/lib/demo-state';
 
 interface TimelineEvent {
   id: string;
@@ -27,8 +28,9 @@ interface TimelineEvent {
 export default function ActivityPage() {
   const router = useRouter();
   const [filterType, setFilterType] = useState<'all' | 'import' | 'audience' | 'campaign' | 'engagement'>('all');
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
 
-  const [events, setEvents] = useState<TimelineEvent[]>([
+  const seedEvents: TimelineEvent[] = [
     {
       id: 'evt-101',
       type: 'engagement',
@@ -47,7 +49,7 @@ export default function ActivityPage() {
       id: 'evt-100',
       type: 'campaign',
       title: 'Mocha Launch Promo Campaign Dispatched',
-      description: 'Triggered bulk campaign dispatch to target segment: "High-Value Churn Risk" (18 recipients). Calling external channel-service Post /send API.',
+      description: 'Triggered bulk campaign dispatch to target segment: "High-Value Churn Risk" (18 recipients).',
       timestamp: '2026-06-14 06:00 AM',
       badge: 'Dispatched',
       badgeColor: 'bg-primary/10 text-primary border-primary/20',
@@ -61,7 +63,7 @@ export default function ActivityPage() {
       id: 'evt-99',
       type: 'import',
       title: 'CSV Ingestion Completed: customers.csv',
-      description: 'Successfully parsed and validated customer profiles dataset. Recomputed metric tables, derivation checks for persona status completed.',
+      description: 'Successfully parsed and validated customer profiles dataset.',
       timestamp: '2026-06-14 05:45 AM',
       badge: 'Success',
       badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -75,20 +77,20 @@ export default function ActivityPage() {
       id: 'evt-98',
       type: 'audience',
       title: 'Audience Cohort Saved: High-Value Churn Risk',
-      description: 'Manual condition logic applied: LTV >= ₹10,000 AND last purchase > 45 days. Group successfully mapped to 18 customer IDs.',
+      description: 'Manual condition logic: LTV >= ₹10,000 AND last purchase > 45 days. Mapped to 18 customer IDs.',
       timestamp: '2026-06-13 11:12 PM',
       badge: 'Saved',
       badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       meta: [
         { label: 'Estimated Size', value: '18 Shoppers' },
-        { label: 'Source', value: 'AI opportunities pre-fill' }
+        { label: 'Source', value: 'AI recommendation' }
       ]
     },
     {
       id: 'evt-97',
       type: 'engagement',
       title: 'Email Delivery Callback: Bounced',
-      description: 'Recipient kavya.verma@example.com reported mail server bounce blocks. Provider event registered.',
+      description: 'Recipient kavya.verma@example.com reported mail server bounce.',
       timestamp: '2026-06-13 04:30 PM',
       badge: 'Delivery Failed',
       badgeColor: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -97,7 +99,33 @@ export default function ActivityPage() {
         { label: 'Event Rank', value: '15 (failed)' }
       ]
     }
-  ]);
+  ];
+
+  const loadEvents = useCallback(() => {
+    const persisted = getDemoActivities([]);
+    const merged = [
+      ...persisted.map(a => ({
+        id: a.id,
+        type: a.type as TimelineEvent['type'],
+        title: a.title,
+        description: a.description,
+        timestamp: a.timestamp,
+        badge: a.badge,
+        badgeColor: a.badgeColor,
+        meta: a.meta,
+      })),
+      ...seedEvents,
+    ];
+    const seen = new Set<string>();
+    setEvents(merged.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true; }));
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+    const handler = () => loadEvents();
+    window.addEventListener('pulse-demo-state', handler);
+    return () => window.removeEventListener('pulse-demo-state', handler);
+  }, [loadEvents]);
 
   const handleSimulateCallbacks = () => {
     const randomEngagements = [
@@ -125,18 +153,27 @@ export default function ActivityPage() {
     ];
 
     const pick = randomEngagements[Math.floor(Math.random() * randomEngagements.length)];
+    const evtId = makeId('evt');
     const newEvt: TimelineEvent = {
-      id: `evt-sim-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: evtId,
       type: 'engagement',
       title: pick.title,
       description: pick.description,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      timestamp: nowLabel(),
       badge: pick.badge,
       badgeColor: pick.badgeColor,
       meta: pick.meta
     };
-
-    setEvents(prev => [newEvt, ...prev]);
+    addDemoActivity({
+      id: evtId,
+      type: 'engagement',
+      title: pick.title,
+      description: pick.description,
+      timestamp: nowLabel(),
+      badge: pick.badge,
+      badgeColor: pick.badgeColor,
+      meta: pick.meta,
+    });
   };
 
   const filteredEvents = events.filter(e => filterType === 'all' || e.type === filterType);

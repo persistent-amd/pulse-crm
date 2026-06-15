@@ -30,6 +30,8 @@ import {
   Pie
 } from 'recharts';
 import { getMockCustomers } from '@/utils/mockData';
+import { getDebugSummary, type DebugSummary } from '@/lib/api';
+import { getDemoCampaigns } from '@/lib/demo-state';
 
 const ACCENT_COLOR = '#e94f37';
 const CHART_COLORS = [ACCENT_COLOR, '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
@@ -39,10 +41,19 @@ export default function OverviewDashboard() {
   const [mounted, setMounted] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [userName, setUserName] = useState('Shalini');
+  const [liveData, setLiveData] = useState<DebugSummary | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setCustomers(getMockCustomers());
+
+    // Fetch live data from backend
+    (async () => {
+      try {
+        const summary = await getDebugSummary();
+        setLiveData(summary);
+      } catch { /* backend unavailable */ }
+    })();
 
     // Read logged in user details
     const userStr = localStorage.getItem('pulse_user');
@@ -50,7 +61,7 @@ export default function OverviewDashboard() {
       try {
         const user = JSON.parse(userStr);
         if (user.name) {
-          setUserName(user.name.split(' ')[0]); // Get first name
+          setUserName(user.name.split(' ')[0]);
         }
       } catch (e) {
         console.error(e);
@@ -66,12 +77,17 @@ export default function OverviewDashboard() {
     );
   }
 
-  // Calculations
+  // Calculations — prefer live backend data, fallback to mock
   const totalLtv = customers.reduce((sum, c) => sum + c.ltv, 0) + 1205300;
-  const personaBreakdown = customers.reduce((acc: any, c) => {
-    acc[c.persona] = (acc[c.persona] || 0) + 1;
-    return acc;
-  }, {});
+  const personaBreakdown = liveData?.persona_breakdown
+    ? liveData.persona_breakdown
+    : customers.reduce((acc: Record<string, number>, c) => {
+        acc[c.persona] = (acc[c.persona] || 0) + 1;
+        return acc;
+      }, {});
+  const customerCount = liveData?.customers ?? 1000;
+  const orderCount = liveData?.orders ?? 5000;
+  const campaignCount = getDemoCampaigns([]).length + 4;
 
   const pieData = Object.keys(personaBreakdown).map((key) => ({
     name: key,
@@ -170,10 +186,10 @@ export default function OverviewDashboard() {
       {/* 2. KPIs Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[
-          { title: 'Total Customers', val: '1,000', sub: '+12.4% MoM', icon: Users, path: '/app/customers', glow: 'rgba(233, 79, 55, 0.04)' },
-          { title: 'Total Orders', val: '5,000', sub: '+8.1% MoM', icon: ShoppingBag, path: '/app/imports', glow: 'rgba(59, 130, 246, 0.04)' },
+          { title: 'Total Customers', val: customerCount.toLocaleString(), sub: liveData ? '● Live' : '+12.4% MoM', icon: Users, path: '/app/customers', glow: 'rgba(233, 79, 55, 0.04)' },
+          { title: 'Total Orders', val: orderCount.toLocaleString(), sub: liveData ? '● Live' : '+8.1% MoM', icon: ShoppingBag, path: '/app/imports', glow: 'rgba(59, 130, 246, 0.04)' },
           { title: 'Revenue (INR)', val: `₹${totalLtv.toLocaleString('en-IN')}`, sub: '+15.2% MoM', icon: IndianRupee, path: '/app/insights', glow: 'rgba(10, 185, 129, 0.04)' },
-          { title: 'Active Campaigns', val: '4', sub: 'WhatsApp, SMS, Email', icon: Megaphone, path: '/app/campaigns', glow: 'rgba(139, 92, 246, 0.04)' },
+          { title: 'Active Campaigns', val: String(campaignCount), sub: 'WhatsApp, SMS, Email', icon: Megaphone, path: '/app/campaigns', glow: 'rgba(139, 92, 246, 0.04)' },
         ].map((kpi, idx) => {
           const Icon = kpi.icon;
           return (

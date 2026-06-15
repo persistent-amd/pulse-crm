@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Sparkles, 
   X, 
@@ -17,7 +18,7 @@ interface Message {
   sender: 'user' | 'ai';
   text: string;
   charts?: 'churn' | 'campaign' | 'drop';
-  actions?: { label: string; action: string }[];
+  actions?: { label: string; action: string; href?: string }[];
 }
 
 interface AICopilotProps {
@@ -26,14 +27,15 @@ interface AICopilotProps {
 }
 
 export default function AICopilot({ isOpen, onClose }: AICopilotProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'ai',
-      text: "Hello, Shalini. I'm your Pulse Growth Strategist. What campaign or shopper discovery would you like to run today?",
+      text: "Hello! I'm your Pulse Growth Strategist. Ask me about segments, campaigns, churn, or growth opportunities.",
       actions: [
-        { label: "Show likely churn customers", action: "churn" },
+        { label: "Show churn-risk shoppers", action: "churn" },
         { label: "Create a loyalty campaign", action: "loyalty" },
-        { label: "Explain recent engagement drop", action: "drop" }
+        { label: "Explain engagement drop", action: "drop" }
       ]
     }
   ]);
@@ -47,108 +49,61 @@ export default function AICopilot({ isOpen, onClose }: AICopilotProps) {
 
   if (!isOpen) return null;
 
-  const triggerMockResponse = (actionKey: string) => {
+  const askCopilot = async (prompt: string) => {
     setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      let response: Message;
-
-      if (actionKey === 'churn') {
-        response = {
-          sender: 'ai',
-          text: `**Analysis: 18 High-Value Shoppers at Churn Risk**
-
-I have analyzed the customer metrics and identified **18 shoppers** who:
-* Have lifetime values greater than **₹10,000**
-* Have not made a purchase in the last **45 days** (AOV is ₹3,700)
-* Clustered category interest: **Electronics (54%)** and **Fashion (32%)**
-
-*Suggested Action*: Draft a win-back campaign with a 15% discount on their favorite categories via WhatsApp.`,
-          charts: 'churn',
-          actions: [
-            { label: "Create Churn Audience", action: "create_audience_churn" },
-            { label: "Draft Win-Back Campaign", action: "create_campaign_churn" }
-          ]
-        };
-      } else if (actionKey === 'loyalty') {
-        response = {
-          sender: 'ai',
-          text: `**Strategy: Weekend Shoppers Loyalty Upgrade**
-
-We have identified **246 Weekend Shoppers** with a high open-rate on WhatsApp (78% vs 35% on SMS).
-To drive repeat orders, I recommend launching a WhatsApp loyalty campaign targeting their favorite weekend categories (Fashion, Coffee).
-
-*Details*:
-* Segment Size: **246 customers**
-* Estimated conversion rate boost: **+4.2%**
-* Recommended delivery: **Saturday morning at 10:00 AM**`,
-          charts: 'campaign',
-          actions: [
-            { label: "Create Weekend Segment", action: "create_audience_weekend" },
-            { label: "Open Campaign Studio", action: "open_campaign" }
-          ]
-        };
-      } else if (actionKey === 'drop') {
-        response = {
-          sender: 'ai',
-          text: `**Explain Drop: SMS Campaign Click-Through Rate Falloff**
-
-Over the last 30 days, SMS click-through rates fell from **8.5% to 3.2%**, primarily in the **Fashion** category.
-*Reason*: SMS carrier filters have increased delivery failures. Additionally, D2C competitors in India are shifting aggressively to WhatsApp and RCS with rich interactive visual carousels.
-
-*Next Best Action*: Migrate future campaigns to WhatsApp or RCS. The pilot run in Coffee category showed a **72% read rate** on WhatsApp.`,
-          charts: 'drop',
-          actions: [
-            { label: "Review Channel Performance", action: "view_analytics" }
-          ]
-        };
-      } else {
-        response = {
-          sender: 'ai',
-          text: `I understand your request for "${actionKey}". Let's design a custom filter condition or draft a messaging copy for this. Select one of our templates or specify a category to build!`,
-          actions: [
-            { label: "Open Campaign Editor", action: "open_campaign" },
-            { label: "Build New Audience", action: "open_audience" }
-          ]
-        };
-      }
-
-      setMessages(prev => [...prev, response]);
-    }, 1200);
+    try {
+      const res = await fetch('/api/ai/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, context: {} }),
+      });
+      const data = await res.json();
+      const actions = (data.actions || []).map((a: { label: string; href?: string }) => ({
+        label: a.label,
+        action: a.href || '',
+        href: a.href,
+      }));
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: data.answer || 'I couldn\'t generate a response. Please try again.',
+        actions,
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: 'I\'m having trouble connecting right now. Try asking about churn risk, coffee buyers, or high-value shoppers.',
+        actions: [
+          { label: 'Go to Imports', action: '/app/imports', href: '/app/imports' },
+          { label: 'Open AI Insights', action: '/app/insights', href: '/app/insights' },
+        ],
+      }]);
+    }
+    setIsTyping(false);
   };
 
   const handleSend = (text: string) => {
     if (!text.trim()) return;
-    const userMsg: Message = { sender: 'user', text };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { sender: 'user', text }]);
     setInputValue('');
-    
-    // Check if the text matches keywords
-    const lower = text.toLowerCase();
-    if (lower.includes('churn') || lower.includes('inactive')) {
-      triggerMockResponse('churn');
-    } else if (lower.includes('loyalty') || lower.includes('weekend')) {
-      triggerMockResponse('loyalty');
-    } else if (lower.includes('drop') || lower.includes('decrease') || lower.includes('fall')) {
-      triggerMockResponse('drop');
-    } else {
-      triggerMockResponse(text);
-    }
+    askCopilot(text);
   };
 
-  const handleActionClick = (actionName: string) => {
-    if (actionName === 'churn' || actionName === 'loyalty' || actionName === 'drop') {
-      const userTextMap: Record<string, string> = {
-        churn: "Show likely churn customers",
-        loyalty: "Create a loyalty campaign for weekend shoppers",
-        drop: "Explain engagement drop in SMS"
-      };
-      setMessages(prev => [...prev, { sender: 'user', text: userTextMap[actionName] }]);
-      triggerMockResponse(actionName);
-    } else {
-      // Trigger frontend redirects or modals
-      alert(`Triggering Action: "${actionName}" - Mock workflow completed.`);
+  const handleActionClick = (action: string, href?: string) => {
+    const path = href || action;
+    if (path.startsWith('/app/')) {
+      router.push(path);
+      onClose();
+      return;
     }
+    // Treat as a prompt
+    const promptMap: Record<string, string> = {
+      churn: 'Show me likely churn-risk customers and what I can do about them',
+      loyalty: 'Create a loyalty campaign for weekend shoppers with high engagement',
+      drop: 'Explain the recent engagement drop in SMS campaigns and suggest alternatives',
+    };
+    const prompt = promptMap[action] || action;
+    setMessages(prev => [...prev, { sender: 'user', text: prompt }]);
+    askCopilot(prompt);
   };
 
   return (
@@ -183,7 +138,6 @@ Over the last 30 days, SMS click-through rates fell from **8.5% to 3.2%**, prima
                   ? 'bg-primary/20 text-foreground border border-primary/30 rounded-tr-none'
                   : 'bg-zinc-900 border border-border rounded-tl-none'
               }`}>
-                {/* Simple Markdown Parser Mock */}
                 <div className="space-y-1 text-foreground/90 whitespace-pre-wrap">
                   {m.text.split('\n').map((line, lIdx) => {
                     if (line.startsWith('**') && line.endsWith('**')) {
@@ -195,40 +149,15 @@ Over the last 30 days, SMS click-through rates fell from **8.5% to 3.2%**, prima
                     return <p key={lIdx}>{line}</p>;
                   })}
                 </div>
-
-                {/* Show mini custom chart icons for details */}
-                {m.charts === 'churn' && (
-                  <div className="mt-3 p-2.5 rounded bg-zinc-950 border border-border/50 flex items-center gap-3">
-                    <div className="p-1.5 rounded bg-red-500/10 text-red-400">
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground">High Value At Risk</p>
-                      <p className="text-xs font-bold font-mono">₹66,600 Potential Loss</p>
-                    </div>
-                  </div>
-                )}
-
-                {m.charts === 'campaign' && (
-                  <div className="mt-3 p-2.5 rounded bg-zinc-950 border border-border/50 flex items-center gap-3">
-                    <div className="p-1.5 rounded bg-emerald-500/10 text-emerald-400">
-                      <Percent className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground">Target Reach</p>
-                      <p className="text-xs font-bold font-mono">246 Shoppers on WhatsApp</p>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Message quick action chips */}
+              {/* Action chips */}
               {m.actions && m.actions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 justify-start">
                   {m.actions.map((act, actIdx) => (
                     <button
                       key={actIdx}
-                      onClick={() => handleActionClick(act.action)}
+                      onClick={() => handleActionClick(act.action, act.href)}
                       className="text-[10px] px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-border hover:border-zinc-500 transition-all text-foreground/90 font-medium flex items-center gap-1"
                     >
                       <span>{act.label}</span>
@@ -262,7 +191,7 @@ Over the last 30 days, SMS click-through rates fell from **8.5% to 3.2%**, prima
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Box */}
+      {/* Input */}
       <div className="p-4 border-t border-border bg-white/[0.01]">
         <div className="flex gap-2">
           <input
@@ -281,7 +210,7 @@ Over the last 30 days, SMS click-through rates fell from **8.5% to 3.2%**, prima
           </button>
         </div>
         <p className="text-[9px] text-muted-foreground text-center mt-2.5">
-          AI growth suggestions are based on real-time database metric audits.
+          Powered by Gemini AI • Responses based on your CRM data
         </p>
       </div>
     </aside>

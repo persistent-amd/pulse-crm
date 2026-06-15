@@ -24,6 +24,8 @@ import {
   Check
 } from 'lucide-react';
 import { getMockCustomers, Customer } from '@/utils/mockData';
+import { addDemoCampaign, addDemoActivity, makeId, nowLabel } from '@/lib/demo-state';
+import { listAudiences } from '@/lib/api';
 
 export default function CampaignStudio() {
   const router = useRouter();
@@ -55,16 +57,30 @@ export default function CampaignStudio() {
     "Click one of the AI Assistant actions on the right to optimize your message copy, suggest CTR hooks, or generate headlines."
   ]);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [launchStatus, setLaunchStatus] = useState('');
 
-  useEffect(() => {
-    setCustomers(getMockCustomers());
-  }, []);
-
-  const audienceOptions = [
+  const [audienceOptions, setAudienceOptions] = useState([
     { id: 'aud-high-value-churn', name: 'High-Value Churn Risk', count: 18, desc: 'LTV >= ₹10k, last purchase > 45 days' },
     { id: 'aud-weekend-shoppers', name: 'Weekend Shoppers', count: 246, desc: 'Clustered Saturday/Sunday purchase logs' },
     { id: 'aud-all', name: 'All Registered Customers', count: 1000, desc: 'Complete D2C seed database' }
-  ];
+  ]);
+
+  useEffect(() => {
+    setCustomers(getMockCustomers());
+    (async () => {
+      try {
+        const backendAudiences = await listAudiences();
+        if (backendAudiences && backendAudiences.length > 0) {
+          const mapped = backendAudiences.map(a => ({
+            id: a.id, name: a.name, count: a.estimated_size,
+            desc: a.description || 'Backend audience',
+          }));
+          setAudienceOptions(prev => [...mapped, ...prev.filter(p => !mapped.find(m => m.name === p.name))]);
+        }
+      } catch { /* backend unavailable */ }
+    })();
+  }, []);
 
   const currentAudience = audienceOptions.find(a => a.id === selectedAudience) || audienceOptions[0];
 
@@ -80,57 +96,37 @@ export default function CampaignStudio() {
     setSelectedChannels(prev => ({ ...prev, [ch]: !prev[ch] }));
   };
 
-  const handleAiAction = (actionKey: string) => {
+  const handleAiAction = async (actionKey: string) => {
     setIsAiLoading(true);
-    setTimeout(() => {
-      setIsAiLoading(false);
-      let suggestions: string[] = [];
-
-      const activeChannelsList = Object.keys(selectedChannels).filter(k => selectedChannels[k]);
-      const preferred = activeChannelsList.length > 0 ? activeChannelsList[0] : 'WhatsApp';
-
+    const activeChannelsList = Object.keys(selectedChannels).filter(k => selectedChannels[k]);
+    const preferred = activeChannelsList.length > 0 ? activeChannelsList[0] : 'WhatsApp';
+    try {
+      const res = await fetch('/api/ai/campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: actionKey,
+          goal: campaignGoal,
+          audienceName: currentAudience.name,
+          channel: preferred,
+          message: messageTemplate,
+        }),
+      });
+      const data = await res.json();
       if (actionKey === 'generate') {
-        if (preferred === 'WhatsApp') {
-          suggestions = [
-            `Hi {{customer_name}}! ☕ It's been a while since your last {{favorite_category}} order. We've reserved a fresh batch of {{recommended_product}} just for you. Use code BREWBACK for free delivery + 10% cash back this weekend! Click to redeem: xn.co/b12`,
-            `Hey {{customer_name}}! 👋 We miss your weekend vibes. Upgrade your morning ritual with {{recommended_product}} and enjoy ₹200 off your next cart. Use code LTY200. Valid for 48 hours only!`
-          ];
-        } else if (preferred === 'Email') {
-          suggestions = [
-            `Subject: We saved something special for you, {{customer_name}}\n\nHi {{customer_name}},\n\nYour morning brew deserves the best. We noticed you haven't ordered your favorite {{favorite_category}} blends in a while.\n\nHere's a special treat: Use code WELCOMEBACK for 15% off our premium collection, including {{recommended_product}}.\n\n[Shop Now]`,
-            `Subject: Up to ₹500 off your next {{favorite_category}} package 🎁\n\nHey {{customer_name}},\n\nWe would love to welcome you back! Enjoy exclusive member discounts on {{recommended_product}} this weekend.`
-          ];
-        } else {
-          suggestions = [
-            `Pulse Alert: Hey {{customer_name}}, we miss you! Grab 15% off {{recommended_product}} with code RECOVER15. Shop: xn.co/r15`
-          ];
-        }
-      } else if (actionKey === 'ctr') {
-        suggestions = [
-          `🔥 Add a high-intent scarcity hook: "Valid for the next 24 hours only!"`,
-          `💬 Add interactive WhatsApp Quick Replies: [Shop Now] | [Remind Me Later]`,
-          `✨ Personalize with specific product names: Ensure you use {{recommended_product}} instead of generic text.`
-        ];
-      } else if (actionKey === 'incentive') {
-        suggestions = [
-          `🎁 Recommend a category voucher: "₹200 discount voucher valid on Beauty/Coffee purchases above ₹1,000"`,
-          `🚚 Free shipping option: "Use code FREESHIP to waive all convenience fees on your next order."`
-        ];
-      } else if (actionKey === 'tone') {
-        suggestions = [
-          `🌟 Professional Premium: "Hello {{customer_name}}, as a valued client, we invite you to experience our latest {{favorite_category}} arrivals with a complimentary gift..."`,
-          `🎉 Casual Energetic: "Hey {{customer_name}}! Guess what? Your favourite {{recommended_product}} is back in stock. Let's get brewing! ⚡"`
-        ];
-      } else if (actionKey === 'subject') {
-        suggestions = [
-          `💌 "Aarav, your Coffee cup is waiting... (15% discount inside)"`,
-          `💌 "Upgrade your morning ritual with {{recommended_product}}"`,
-          `💌 "We miss you, Aarav. Here's ₹200 off your favorite Coffee"`
-        ];
+        setAiSuggestions([data.body || data.headline || 'AI generated copy loaded.']);
+        if (data.headline) setCampaignName(data.headline);
+      } else {
+        const parts = [];
+        if (data.headline) parts.push(data.headline);
+        if (data.body) parts.push(data.body);
+        if (data.reasoning) parts.push(`💡 ${data.reasoning}`);
+        setAiSuggestions(parts.length > 0 ? parts : ['AI suggestion applied.']);
       }
-
-      setAiSuggestions(suggestions);
-    }, 800);
+    } catch {
+      setAiSuggestions(['AI service temporarily unavailable. Try again or edit copy manually.']);
+    }
+    setIsAiLoading(false);
   };
 
   const handleApplySuggestion = (text: string) => {
@@ -142,17 +138,74 @@ export default function CampaignStudio() {
     }
   };
 
-  const handleLaunchCampaign = () => {
-    const channelsList = Object.keys(selectedChannels).filter(k => selectedChannels[k]);
+  const handleLaunchCampaign = async () => {
+    const channelsList = Object.keys(selectedChannels).filter(k => selectedChannels[k]) as ('WhatsApp' | 'SMS' | 'Email' | 'RCS')[];
     if (channelsList.length === 0) {
-      alert("Please select at least one outreach channel.");
+      alert('Please select at least one outreach channel.');
       return;
     }
-    alert(`Campaign Launched! Dispatched outbound simulated event alerts to ${currentAudience.count} recipients via ${channelsList.join(', ')}.\nCallbacks will automatically stream back to the receipt API.`);
+    setIsLaunching(true);
+    const steps = [
+      `Resolving ${currentAudience.count} recipient addresses...`,
+      `Rendering personalization tags...`,
+      `Dispatching via ${channelsList.join(', ')}...`,
+      `Streaming receipt callbacks...`,
+      `Campaign launched!`,
+    ];
+    for (const s of steps) {
+      setLaunchStatus(s);
+      await new Promise(r => setTimeout(r, 600));
+    }
+    // Persist campaign to demo-state
+    addDemoCampaign({
+      id: makeId('camp'),
+      name: campaignName,
+      audience: currentAudience.name,
+      audienceCount: currentAudience.count,
+      channels: channelsList,
+      status: 'Active',
+      date: new Date().toISOString().split('T')[0],
+      ctr: `${(12 + Math.random() * 8).toFixed(1)}%`,
+    });
+    addDemoActivity({
+      id: makeId('evt'),
+      type: 'campaign',
+      title: `Campaign Launched: ${campaignName}`,
+      description: `Dispatched to ${currentAudience.count} recipients via ${channelsList.join(', ')}. Receipt callbacks streaming.`,
+      timestamp: nowLabel(),
+      badge: 'Dispatched',
+      badgeColor: 'bg-primary/10 text-primary border-primary/20',
+      meta: [
+        { label: 'Audience', value: currentAudience.name },
+        { label: 'Channels', value: channelsList.join(', ') },
+        { label: 'Recipients', value: String(currentAudience.count) },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 400));
+    setIsLaunching(false);
     router.push('/app/campaigns');
   };
 
   return (
+    <>
+      {isLaunching && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200">
+          <div className="depth-panel rounded-2xl p-8 border border-border max-w-md w-full mx-4 space-y-6 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <Send className="w-5 h-5 text-primary animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Dispatching Campaign</h3>
+                <p className="text-[10px] text-muted-foreground font-mono">{campaignName}</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-950 border border-border/50 text-xs text-muted-foreground font-mono leading-relaxed">
+              {launchStatus}
+            </div>
+          </div>
+        </div>
+      )}
     <div className="space-y-8 animate-in fade-in duration-500">
 
       {/* Header */}
@@ -508,6 +561,7 @@ export default function CampaignStudio() {
       </section>
 
     </div>
+    </>
   );
 }
 

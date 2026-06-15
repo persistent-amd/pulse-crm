@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   BrainCircuit, 
@@ -23,6 +23,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { getMockCustomers, Customer } from '@/utils/mockData';
+import { getDebugSummary } from '@/lib/api';
 
 const ACCENT_COLOR = '#e94f37';
 const CHART_COLORS = [ACCENT_COLOR, '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
@@ -31,6 +32,8 @@ export default function AIInsightsPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [aiInsights, setAiInsights] = useState<{ id: string; title: string; section: string; confidence: number; reasoning: string; recommendedAction: string; impact: string }[]>([]);
   const [checkedActions, setCheckedActions] = useState<Record<string, boolean>>({
     'act-1': false,
     'act-2': false,
@@ -38,10 +41,30 @@ export default function AIInsightsPage() {
     'act-4': true
   });
 
+  const fetchInsights = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      let context = {};
+      try {
+        const summary = await getDebugSummary();
+        context = { customers: summary.customers, orders: summary.orders, audiences: summary.audiences, personaBreakdown: summary.persona_breakdown };
+      } catch { /* use empty context */ }
+      const res = await fetch('/api/ai/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context),
+      });
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) setAiInsights(data);
+    } catch { /* keep existing static insights */ }
+    setIsRefreshing(false);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     setCustomers(getMockCustomers());
-  }, []);
+    fetchInsights();
+  }, [fetchInsights]);
 
   if (!mounted) {
     return (
@@ -115,9 +138,24 @@ export default function AIInsightsPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <section className="border-b border-border/30 pb-4">
-        <h2 className="title-page">AI Insights & Audits</h2>
-        <p className="text-xs text-muted-foreground mt-1">Predictive audits analyzing customer velocities and campaign click performance.</p>
+      <section className="flex items-center justify-between border-b border-border/30 pb-4">
+        <div>
+          <h2 className="title-page">AI Insights & Audits</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            {aiInsights.length > 0
+              ? <><span className="text-emerald-400 font-semibold">● AI-Generated</span> — {aiInsights.length} actionable insights from your CRM data.</>
+              : 'Predictive audits analyzing customer velocities and campaign click performance.'
+            }
+          </p>
+        </div>
+        <button
+          onClick={fetchInsights}
+          disabled={isRefreshing}
+          className="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-border text-foreground hover:text-white transition-all flex items-center gap-2 disabled:opacity-50"
+        >
+          <Sparkles className={`w-3.5 h-3.5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span>{isRefreshing ? 'Refreshing...' : 'Refresh Insights'}</span>
+        </button>
       </section>
 
       {/* 1. Featured Hero Insight Card */}
@@ -367,6 +405,54 @@ export default function AIInsightsPage() {
         </div>
 
       </div>
+
+      {/* AI-Generated Dynamic Insights */}
+      {aiInsights.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="w-4 h-4 text-primary" />
+            <h3 className="title-section">AI-Generated Insights</h3>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-semibold">
+              ● Live
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aiInsights.map((insight) => {
+              const sectionIcons: Record<string, typeof TrendingUp> = {
+                churn: ShieldAlert, growth: TrendingUp, persona: Award,
+                campaign: Zap, next: Sparkles,
+              };
+              const Icon = sectionIcons[insight.section] || Sparkles;
+              return (
+                <div key={insight.id} className="depth-card rounded-xl p-5 border border-border space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded bg-primary/10 text-primary">
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[9px] uppercase font-mono font-bold text-muted-foreground">{insight.section}</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-semibold">
+                      {insight.confidence}% confidence
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug">{insight.title}</h4>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{insight.reasoning}</p>
+                  <div className="pt-2 border-t border-border/30 flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-primary">{insight.impact}</span>
+                    <button
+                      onClick={() => router.push('/app/campaigns/new')}
+                      className="text-[10px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-border text-foreground/80 font-medium flex items-center gap-1"
+                    >
+                      Take Action <ArrowRight className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
     </div>
   );

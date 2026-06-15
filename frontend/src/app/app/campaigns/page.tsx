@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Megaphone, 
@@ -19,6 +19,7 @@ import {
   Mail,
   MessageSquare
 } from 'lucide-react';
+import { getDemoCampaigns, type DemoCampaign } from '@/lib/demo-state';
 
 interface CampaignItem {
   id: string;
@@ -36,8 +37,8 @@ export default function CampaignsListPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Draft' | 'Scheduled' | 'Active' | 'Completed'>('All');
-  
-  const [campaigns, setCampaigns] = useState<CampaignItem[]>([
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
+  const seedCampaigns: CampaignItem[] = [
     {
       id: 'camp-101',
       name: 'Mocha Launch Promo',
@@ -79,7 +80,35 @@ export default function CampaignsListPage() {
       date: '2026-06-14',
       ctr: '--'
     }
-  ]);
+  ];
+
+  const loadCampaigns = useCallback(() => {
+    const persisted = getDemoCampaigns([]);
+    const merged = [
+      ...persisted.map(c => ({
+        id: c.id,
+        name: c.name,
+        audience: c.audience,
+        audienceCount: c.audienceCount,
+        channels: c.channels,
+        status: c.status,
+        date: c.date,
+        ctr: c.ctr,
+        revenue: c.revenue,
+      })),
+      ...seedCampaigns,
+    ];
+    // Deduplicate by id
+    const seen = new Set<string>();
+    setCampaigns(merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
+  }, []);
+
+  useEffect(() => {
+    loadCampaigns();
+    const onStateChange = () => loadCampaigns();
+    window.addEventListener('pulse-demo-state', onStateChange);
+    return () => window.removeEventListener('pulse-demo-state', onStateChange);
+  }, [loadCampaigns]);
 
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
