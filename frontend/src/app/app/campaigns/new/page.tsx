@@ -21,7 +21,8 @@ import {
   Calendar,
   MessageSquare,
   TrendingUp,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { getMockCustomers, Customer } from '@/utils/mockData';
 import { addDemoCampaign, addDemoActivity, makeId, nowLabel } from '@/lib/demo-state';
@@ -60,6 +61,12 @@ export default function CampaignStudio() {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState('');
 
+  // AI Campaign Planner state
+  const [planGoal, setPlanGoal] = useState('');
+  const [planNotes, setPlanNotes] = useState('');
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [planReasoning, setPlanReasoning] = useState('');
+
   const [audienceOptions, setAudienceOptions] = useState([
     { id: 'aud-high-value-churn', name: 'High-Value Churn Risk', count: 18, desc: 'LTV >= ₹10k, last purchase > 45 days' },
     { id: 'aud-weekend-shoppers', name: 'Weekend Shoppers', count: 246, desc: 'Clustered Saturday/Sunday purchase logs' },
@@ -94,6 +101,60 @@ export default function CampaignStudio() {
 
   const handleChannelToggle = (ch: string) => {
     setSelectedChannels(prev => ({ ...prev, [ch]: !prev[ch] }));
+  };
+
+  const handleAiPlanCampaign = async () => {
+    if (!planGoal.trim()) return;
+    setIsPlanning(true);
+    setPlanReasoning('');
+    try {
+      const res = await fetch('/api/ai/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: planGoal, notes: planNotes || undefined }),
+      });
+      const data = await res.json();
+      if (data.campaignName) setCampaignName(data.campaignName);
+      if (data.messageBody) setMessageTemplate(data.messageBody);
+      if (data.reasoning) setPlanReasoning(data.reasoning);
+
+      // Match audience recommendation to existing options
+      if (data.audienceRecommendation) {
+        const match = audienceOptions.find(a =>
+          a.name.toLowerCase().includes(data.audienceRecommendation.toLowerCase()) ||
+          data.audienceRecommendation.toLowerCase().includes(a.name.toLowerCase())
+        );
+        if (match) setSelectedAudience(match.id);
+      }
+
+      // Set channel recommendation
+      if (data.channelRecommendation) {
+        const ch = data.channelRecommendation;
+        setSelectedChannels({
+          WhatsApp: ch === 'WhatsApp',
+          SMS: ch === 'SMS',
+          Email: ch === 'Email',
+          RCS: ch === 'RCS',
+        });
+      }
+
+      // Map goal keywords to campaign goal enum
+      const goalLower = planGoal.toLowerCase();
+      if (goalLower.includes('win back') || goalLower.includes('winback') || goalLower.includes('dormant') || goalLower.includes('inactive')) {
+        setCampaignGoal('Win Back');
+      } else if (goalLower.includes('upsell') || goalLower.includes('premium') || goalLower.includes('subscription')) {
+        setCampaignGoal('Upsell');
+      } else if (goalLower.includes('launch') || goalLower.includes('new product')) {
+        setCampaignGoal('Product Launch');
+      } else {
+        setCampaignGoal('Retention');
+      }
+
+      setAiSuggestions([`\u2705 Campaign planned: "${data.campaignName}"\n\n${data.reasoning || 'AI has populated all fields. Review and launch when ready.'}`]);
+    } catch {
+      setPlanReasoning('AI service temporarily unavailable. Fill in the campaign details manually.');
+    }
+    setIsPlanning(false);
   };
 
   const handleAiAction = async (actionKey: string) => {
@@ -230,6 +291,69 @@ export default function CampaignStudio() {
           <Send className="w-3.5 h-3.5" />
           <span>Launch Campaign</span>
         </button>
+      </section>
+
+      {/* AI Campaign Planner */}
+      <section className="depth-panel rounded-xl p-5 border border-primary/20 bg-gradient-to-r from-primary/[0.03] to-transparent space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded bg-primary/10 text-primary">
+            <Bot className="w-4 h-4" />
+          </div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">AI Campaign Planner</h4>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-mono font-semibold">Beta</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Describe your campaign goal. AI will draft the complete setup — audience, channel, copy, and CTA.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <input
+            type="text"
+            value={planGoal}
+            onChange={(e) => setPlanGoal(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAiPlanCampaign()}
+            placeholder="e.g. Win back customers inactive for 60 days with 15% discount"
+            className="md:col-span-2 px-3 py-2.5 rounded-lg bg-zinc-900 border border-border text-xs focus:outline-none focus:border-primary transition-all text-foreground placeholder:text-muted-foreground/60"
+          />
+          <input
+            type="text"
+            value={planNotes}
+            onChange={(e) => setPlanNotes(e.target.value)}
+            placeholder="Optional notes..."
+            className="px-3 py-2.5 rounded-lg bg-zinc-900 border border-border text-xs focus:outline-none focus:border-primary transition-all text-foreground placeholder:text-muted-foreground/60"
+          />
+          <button
+            onClick={handleAiPlanCampaign}
+            disabled={isPlanning || !planGoal.trim()}
+            className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 text-white text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/15 cursor-pointer"
+          >
+            {isPlanning ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Planning...</>
+            ) : (
+              <><Sparkles className="w-3.5 h-3.5" /> Plan with AI</>
+            )}
+          </button>
+        </div>
+        {planReasoning && (
+          <div className="p-3 rounded-lg bg-zinc-950 border border-border/50 text-[11px] text-muted-foreground leading-relaxed font-mono">
+            <span className="text-primary font-semibold">AI Strategy:</span> {planReasoning}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            'Win back dormant customers with 15% off',
+            'Promote premium coffee subscriptions',
+            'Increase weekend fashion sales',
+            'Upsell electronics accessories',
+          ].map(example => (
+            <button
+              key={example}
+              onClick={() => setPlanGoal(example)}
+              className="text-[9px] px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-border hover:border-zinc-600 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Redesigned Balanced 3-Column Grid Layout */}

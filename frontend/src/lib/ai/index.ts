@@ -8,8 +8,12 @@ export function getAiProvider(): AiProvider {
 
 export type {
   AiProvider,
+  AudienceCondition,
+  AudienceFilterOutput,
   CampaignGenerationInput,
   CampaignGenerationOutput,
+  CampaignPlanInput,
+  CampaignPlanOutput,
   CopilotMessage,
   CrmContext,
   OpportunityInsight,

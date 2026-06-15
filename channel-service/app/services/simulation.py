@@ -30,7 +30,7 @@ def provider_event_id(dispatch: ChannelDispatch, event_type: str) -> str:
 def payload_for(dispatch: ChannelDispatch, event_type: str) -> dict:
     metadata = {"simulated": True}
     if event_type == "converted":
-        metadata["attributed_revenue"] = str(Decimal(random.choice([799, 1299, 2499, 3499])))
+        metadata["attributed_revenue"] = str(Decimal(random.choice([799, 1299, 2499, 3499]))) # type: ignore
     return {
         "provider_event_id": provider_event_id(dispatch, event_type),
         "communication_id": str(dispatch.communication_id),

@@ -12,7 +12,9 @@ import {
   Save,
   Search,
   ChevronRight,
-  Download
+  Download,
+  Bot,
+  Loader2
 } from 'lucide-react';
 import { getMockCustomers, Customer, CITIES, PERSONAS } from '@/utils/mockData';
 import {
@@ -56,6 +58,11 @@ export default function AudiencesPage() {
   const [audienceName, setAudienceName] = useState('');
   const [audienceDesc, setAudienceDesc] = useState('');
   const [backendPreview, setBackendPreview] = useState<{ size: number; sample_customers: DebugCustomer[] } | null>(null);
+
+  // AI Audience Builder state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiParsing, setIsAiParsing] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState('');
   const [builderError, setBuilderError] = useState('');
 
   const [savedAudiences, setSavedAudiences] = useState<SavedAudience[]>([
@@ -341,6 +348,34 @@ export default function AudiencesPage() {
     setView('list');
   };
 
+  const handleAiBuildAudience = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsAiParsing(true);
+    setAiReasoning('');
+    try {
+      const res = await fetch('/api/ai/audience', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+      const data = await res.json();
+      if (data.conditions && Array.isArray(data.conditions) && data.conditions.length > 0) {
+        setConditions(data.conditions.map((c: { field: string; op: string; value: string | number }, i: number) => ({
+          id: String(Date.now()) + i,
+          field: c.field as Condition['field'],
+          op: c.op as Condition['op'],
+          value: c.value,
+        })));
+        if (data.audienceName) setAudienceName(data.audienceName);
+        if (data.audienceDescription) setAudienceDesc(data.audienceDescription);
+        if (data.reasoning) setAiReasoning(data.reasoning);
+      }
+    } catch {
+      setAiReasoning('AI service temporarily unavailable. Build your audience manually below.');
+    }
+    setIsAiParsing(false);
+  };
+
   const generateLogicString = () => {
     if (conditions.length === 0) return "All customers";
     return conditions.map(c => {
@@ -478,6 +513,63 @@ export default function AudiencesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
           <div className="lg:col-span-2 space-y-6">
+
+            {/* AI Audience Assistant */}
+            <div className="depth-panel rounded-xl p-5 border border-primary/20 bg-gradient-to-r from-primary/[0.03] to-transparent space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded bg-primary/10 text-primary">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">AI Audience Assistant</h4>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-mono font-semibold">Beta</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Describe your target audience in plain English. AI will generate the filter rules for you.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAiBuildAudience()}
+                  placeholder="e.g. Customers who spent over ₹10,000 and have not purchased in 45 days"
+                  className="flex-1 px-3 py-2.5 rounded-lg bg-zinc-900 border border-border text-xs focus:outline-none focus:border-primary transition-all text-foreground placeholder:text-muted-foreground/60"
+                />
+                <button
+                  onClick={handleAiBuildAudience}
+                  disabled={isAiParsing || !aiPrompt.trim()}
+                  className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 text-white text-xs font-semibold transition-all flex items-center gap-2 shadow-lg shadow-primary/15 cursor-pointer whitespace-nowrap"
+                >
+                  {isAiParsing ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Parsing...</>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5" /> Build with AI</>
+                  )}
+                </button>
+              </div>
+              {aiReasoning && (
+                <div className="p-3 rounded-lg bg-zinc-950 border border-border/50 text-[11px] text-muted-foreground leading-relaxed font-mono">
+                  <span className="text-primary font-semibold">AI:</span> {aiReasoning}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'High spenders inactive 45+ days',
+                  'Loyal customers with 5+ orders',
+                  'Delhi shoppers',
+                  'Churn risk customers',
+                ].map(example => (
+                  <button
+                    key={example}
+                    onClick={() => { setAiPrompt(example); }}
+                    className="text-[9px] px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-border hover:border-zinc-600 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="depth-panel rounded-xl p-6 border border-border space-y-6">
 
               <div className="flex items-center justify-between border-b border-border/30 pb-3">
