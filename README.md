@@ -2,6 +2,115 @@
 
 > An AI-native marketing CRM platform for shopper engagement, audience segmentation, campaign orchestration, and communication tracking.
 
+## Live Demo
+
+### Frontend
+
+https://pulse-crm-persistent-amd.vercel.app/
+
+### Backend API Docs
+
+https://pulse-crm-6p6n.onrender.com/docs
+
+---
+
+Use the Instant Sandbox for quick viewing/testing
+---
+## Demo Credentials
+
+Use the built-in demo account:
+
+Email: [demo@pulsecrm.ai](mailto:demo@pulsecrm.ai)
+Password: demo123
+
+Or create a new account using the Sign Up page.
+
+---
+
+## Key Features
+
+### AI-Native Audience Builder
+
+Describe an audience in natural language and AI converts it into structured segmentation rules.
+
+Example:
+"Customers who spent over ₹10,000 and haven't purchased in 45 days"
+
+### AI Campaign Planner
+
+Describe a marketing goal and AI generates:
+
+* Campaign name
+* Audience recommendation
+* Channel recommendation
+* Message copy
+* CTA
+* Campaign rationale
+
+Example:
+"Reactivate inactive customers with a 15% discount"
+
+### AI Copilot
+
+Chat-based marketing assistant for:
+
+* Campaign ideation
+* Audience discovery
+* Retention strategies
+* Growth recommendations
+
+### Callback-Driven Channel Simulation
+
+Campaigns are dispatched through a separate Channel Service which simulates:
+
+* Sent
+* Delivered
+* Failed
+* Opened / Read
+* Clicked
+* Converted
+
+Events are asynchronously sent back to the CRM through receipt callbacks and reflected in analytics.
+
+---
+
+## Design Decisions & Tradeoffs
+
+### Why a Separate Channel Service?
+
+Real messaging providers operate outside the CRM.
+
+Instead of updating campaign status directly, Pulse CRM uses a dedicated channel service that:
+
+CRM → Channel Service → Callback Events → CRM
+
+This models real-world webhook-based communication platforms.
+
+### Why AI-Assisted Instead of Fully Autonomous?
+
+The goal was to keep marketers in control.
+
+AI helps with:
+
+* Audience creation
+* Campaign planning
+* Marketing insights
+
+while allowing human review before launch.
+
+### Scale Assumptions
+
+Current implementation is optimized for assignment scope.
+
+At larger scale I would introduce:
+
+* Redis/Kafka/SQS for event processing
+* Worker queues for imports
+* Async campaign dispatch workers
+* Distributed callback processing
+* Observability and monitoring
+* Rate limiting and throttling
+
 ---
 
 ## Architecture
@@ -19,6 +128,102 @@
    │ (opt.)   │            │ (opt. Port 9000)│
    └──────────┘            └─────────────────┘
 ```
+
+Customer CSV
+      ↓
+PostgreSQL
+      ↓
+Audience Builder
+      ↓
+AI Campaign Planner
+      ↓
+Campaign Launch
+      ↓
+Channel Service
+      ↓
+Receipt Callbacks
+      ↓
+Analytics & Insights
+
+## Product Screenshots
+
+### 1. Landing Page
+
+The public-facing entry point of Pulse CRM. Introduces the platform as an AI-native shopper command center and highlights the core value proposition.
+
+![Landing Page](docs/screenshots/landing-page.png)
+
+---
+
+### 2. Authentication & Workspace Access
+
+A lightweight authentication experience with demo sandbox access for quickly exploring the platform.
+
+![Login Page](docs/screenshots/login-page.png)
+
+---
+
+### 3. Executive Dashboard
+
+A unified command center showing customer growth, revenue metrics, campaign performance, and AI-generated growth opportunities.
+
+![Dashboard Overview](docs/screenshots/dashboard-overview.png)
+
+---
+
+### 4. Customer & Order Ingestion Pipeline
+
+Upload customer and order CSV feeds, validate records, deduplicate data, and monitor ingestion status.
+
+**Assignment Requirement Covered:** Customer & Order Data Ingestion
+
+![Ingestion Pipeline](docs/screenshots/imports-ingestion.png)
+
+---
+
+### 5. AI Audience Builder
+
+Create audience segments using natural language. The AI Audience Assistant converts marketer intent into actionable segmentation rules.
+
+**Example:**  
+*"High spenders inactive for 45+ days"* → Automatically generates audience filters.
+
+**Assignment Requirement Covered:** Shopper Segmentation
+
+![AI Audience Builder](docs/screenshots/audience-builder.png)
+
+---
+
+### 6. AI Campaign Studio
+
+Generate campaign strategy, target audience recommendations, communication channels, and personalized campaign copy from a business goal.
+
+**Example:**  
+*"Increase weekend fashion sales"* → AI drafts a complete campaign setup.
+
+**Assignment Requirement Covered:** Personalized Communication
+
+![Campaign Studio](docs/screenshots/campaign-studio.png)
+
+---
+
+### 7. Communication Lifecycle & Callback Tracking
+
+Activity timeline displaying campaign dispatches, delivery events, engagement callbacks, and purchase attribution events received from the simulated channel service.
+
+**Assignment Requirement Covered:** Communication Performance Tracking
+
+![Activity & Callbacks](docs/screenshots/activity-callbacks.png)
+
+---
+
+### 8. AI Insights Engine
+
+AI-generated business recommendations, churn risk detection, revenue recovery opportunities, persona analysis, and campaign suggestions derived from shopper behavior.
+
+![AI Insights](docs/screenshots/ai-insights.png)
+
+---
 
 ## Quick Start
 
@@ -179,6 +384,24 @@ pulse-crm/
 - **Design**: Dark mode first, premium SaaS aesthetics
 
 ---
+
+## Assignment Coverage
+
+| Requirement | Status |
+|------------|--------|
+| Customer & Order Ingestion | ✅ |
+| Shopper Segmentation | ✅ |
+| Personalized Campaigns | ✅ |
+| Communication Performance Tracking | ✅ |
+| AI Audience Builder | ✅ |
+| AI Campaign Planner | ✅ |
+| AI Copilot Assistant | ✅ |
+| AI Insights Engine | ✅ |
+| Separate Channel Service | ✅ |
+| Callback Receipt Processing | ✅ |
+| Delivery Event Simulation | ✅ |
+| Conversion Attribution | ✅ |
+
 
 ## License
 
