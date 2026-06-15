@@ -1,7 +1,8 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
 
 from app.api.routes import audiences, debug, imports, receipts, sample
 from app.core.config import Settings, get_settings
@@ -25,8 +26,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["*"],
         )
 
-    @app.get("/health", tags=["health"])
-    def health_check(db: Session = Depends(get_db)) -> dict[str, str]:
+    @app.api_route("/health", methods=["GET", "HEAD"], tags=["health"])
+    def health_check(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
         return {"status": "ok", "service": "backend"}
 
