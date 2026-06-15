@@ -126,7 +126,7 @@ Infrastructure
 
 * Docker
 * Vercel
-* Railway
+* Render/Render
 * Neon PostgreSQL
 
 AI

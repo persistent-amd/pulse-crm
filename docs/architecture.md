@@ -89,12 +89,12 @@ flowchart TB
 ```mermaid
 flowchart LR
     User[Evaluator browser] --> Vercel[Vercel frontend]
-    Vercel --> RailwayCRM[Railway CRM API]
-    RailwayCRM --> Neon[(Neon PostgreSQL)]
-    RailwayCRM --> RailwayChannel[Railway channel service]
-    RailwayChannel --> Neon
-    RailwayChannel -->|callbacks| RailwayCRM
-    RailwayCRM --> Gemini[Gemini API]
+    Vercel --> RenderCRM[Render CRM API]
+    RenderCRM --> Neon[(Neon PostgreSQL)]
+    RenderCRM --> RenderChannel[Render channel service]
+    RenderChannel --> Neon
+    RenderChannel -->|callbacks| RenderCRM
+    RenderCRM --> Gemini[Gemini API]
 ```
 
 Recommended environment variables:
@@ -694,7 +694,7 @@ Seed data should create visible segments: high-value loyalists, churn-risk custo
 ### Phase 7: Demo Polish and Deployment
 
 - Deploy frontend to Vercel.
-- Deploy CRM backend and channel service to Railway.
+- Deploy CRM backend and channel service to Render.
 - Deploy PostgreSQL to Neon.
 - Run seeded demo flow: import/seed data, create AI audience, generate campaign, launch, receive simulated callbacks, show analytics.
 - Prepare walkthrough talking points for product intro, functional demo, technical architecture, code walkthrough, and AI-native workflow.
